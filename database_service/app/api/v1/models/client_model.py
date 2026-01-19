@@ -1,6 +1,6 @@
 from pathlib import Path
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 BASE_DIR = Path("C:/Users/RosalinaTeixeiraOliv/Documents/Cursos/Desafio de Python")
 DB_PATH = BASE_DIR / 'db' / 'javer.db'
@@ -8,7 +8,16 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 db = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 
+sessionLocal = sessionmaker(autocommit = False, autoflush= False, bind=db)
+
 Base = declarative_base()
+
+def get_db():
+    db = sessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 class Cliente(Base):
     __tablename__ = 'clientes'
@@ -27,4 +36,3 @@ class Cliente(Base):
         self.correntista = correntista
         self.saldo = saldo
 Base.metadata.create_all(bind=db)
-

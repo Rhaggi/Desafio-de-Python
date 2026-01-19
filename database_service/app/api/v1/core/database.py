@@ -11,6 +11,7 @@ cursor = conn.cursor()
 cursor.execute('''CREATE TABLE IF NOT EXISTS clientes(
                id integer primary key autoincrement,
                 nome TEXT NOT NULL,
+               email TEXT UNIQUE NOT NULL,
                telefone INTEGER,
                correntista BOOLEAN NOT NULL DEFAULT 1,
                saldo_cc REAL

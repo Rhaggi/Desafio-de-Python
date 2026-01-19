@@ -4,8 +4,8 @@ conn = sqlite3.connect('javer.db')
 cursor = conn.cursor()
 
 
-def criar(nome):
-    cursor.execute('INSERT INTO clientes (nome) VALUES (?)', (nome,))
+def criar(nome, email, telefone, correntista, saldo):
+    cursor.execute('INSERT INTO clientes (nome, email, telefone, correntista, saldo_cc) VALUES (?, ?, ?, ?, ?)', (nome, email, telefone, correntista, saldo))
     conn.commit()
     print('Usuário criado com sucesso!')
 

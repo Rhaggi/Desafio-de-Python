@@ -5,36 +5,21 @@ from sqlalchemy.orm import sessionmaker
 from client_service.app.api.endpoints.score import GetScore
 
 
-clientes = APIRouter(prefix='/client-service', tags=['client-Service'])
+clientes = APIRouter(prefix='/client-service', tags=['client-service'])
 
-@clientes.get("/get-clients")
-def get_clients():
+@clientes.get("/get-client-by-email/{email}")
+def get_client_by_email(email: str):
     """
-    Essa é a rota para obter a lista de clientes cadastrados no banco de dados.
+    Essa é a rota para obter um cliente específico pelo email.
     """
     SessionLocal = sessionmaker(bind=db)
     session = SessionLocal()
     try:
-        if not session.query(Cliente).first():
-            raise HTTPException(status_code=404, detail="Nenhum cliente encontrado.")
-        clients = session.query(Cliente).all()
-        return clients
-    finally:
-        session.close()
-
-@clientes.get("/get-client-by-id/{client_id}")
-def get_client_by_id(client_id: int):
-    """
-    Essa é a rota para obter um cliente específico pelo ID.
-    """
-    SessionLocal = sessionmaker(bind=db)
-    session = SessionLocal()
-    try:
-        clients = session.query(Cliente).filter(Cliente.id == client_id).first()
+        clients = session.query(Cliente).filter(Cliente.email == email).first()
         if not clients:
             raise HTTPException(status_code=404, detail="Nenhum cliente encontrado.")
         score = GetScore(clients.saldo)
-        return {"client": {"id": clients.id, "nome": clients.nome, "telefone": clients.telefone, "correntista": clients.correntista, "saldo": clients.saldo}, "score": score}
+        return {"client": {"id": clients.id, "nome": clients.nome, "telefone": clients.telefone, "correntista": clients.correntista, "saldo": clients.saldo, "email": clients.email}, "score": score}
     finally:
         session.close()
 
@@ -50,52 +35,106 @@ def add_client(cliente_schema: ClienteSchema):
             raise HTTPException(status_code=400, detail="Saldo não pode ser negativo.")
         if not cliente_schema.telefone or len(str(cliente_schema.telefone)) < 10 or len(str(cliente_schema.telefone)) > 11:
             raise HTTPException(status_code=400, detail="Telefone inválido.")
-        cliente = Cliente(nome=cliente_schema.nome, telefone=cliente_schema.telefone, correntista=cliente_schema.correntista, saldo=cliente_schema.saldo)
+        if session.query(Cliente).filter(Cliente.email == cliente_schema.email).first():
+            raise HTTPException(status_code=400, detail="Cliente já cadastrado.")
+        if cliente_schema.correntista == False:
+            raise HTTPException(status_code=400, detail="Cliente deve ser correntista para ser cadastrado.")
+        cliente = Cliente(nome=cliente_schema.nome, email=cliente_schema.email, telefone=cliente_schema.telefone, correntista=cliente_schema.correntista, saldo=cliente_schema.saldo)
         session.add(cliente)
         session.commit()
         session.refresh(cliente)
         score = GetScore(cliente.saldo)
-        return {"message": "Cliente adicionado com sucesso!", "client": {"id": cliente.id, "nome": cliente.nome, "saldo": cliente.saldo, "score": score}}
+        return {"message": "Cliente adicionado com sucesso!", "client": {"id": cliente.id, "nome": cliente.nome, "email": cliente.email, "saldo": cliente.saldo, "score": score}}
     finally:
         session.close()
 
-@clientes.delete("/delete-client/{client_id}")
-def delete_client(client_id: int):
+@clientes.delete("/delete-client/{email}")
+def delete_client(email: str):
     """
     Essa é a rota para excluir um cliente da lista de clientes cadastrados no banco de dados.
     """
     SessionLocal = sessionmaker(bind=db)
     session = SessionLocal()
     try:
-        client = session.query(Cliente).filter(Cliente.id == client_id).first()
+        client = session.query(Cliente).filter(Cliente.email == email).first()
         if not client:
             raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+        if client.saldo > 0:
+            raise HTTPException(status_code=400, detail="Não é possível excluir um cliente com saldo positivo.")
         session.delete(client)
         session.commit()
     finally:
         session.close()
-    return {"message": f"Cliente de id {client_id} excluído com sucesso."}
+    return {"message": f"Cliente de email {email} excluído com sucesso."}
 
-@clientes.patch("/update-client/{client_id}")
-def update_client(client_id: int, client: ClienteSchema):
+@clientes.put("/saque-saldo/{email}/{valor}")
+def delete_saldo(email: str, valor: float):
+    SessionLocal = sessionmaker(bind=db)
+    session = SessionLocal()
+    try:
+        client = session.query(Cliente).filter(Cliente.email == email).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+        if valor > client.saldo:
+            raise HTTPException(status_code=400, detail="Saldo insuficiente para saque.")
+        client.saldo -= valor
+        session.commit()
+        session.refresh(client)
+        return {"message": f"Saldo do cliente de email {email} sacado com sucesso. Saldo atual: {client.saldo}"}
+    finally:
+        session.close()
+
+@clientes.put("/deposito-saldo/{email}/{valor}")
+def depositar_saldo(email: str, valor: float):
+    SessionLocal = sessionmaker(bind=db)
+    session = SessionLocal()
+    try:
+        client = session.query(Cliente).filter(Cliente.email == email).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+        if valor <= 0:
+            raise HTTPException(status_code=400, detail="Valor de depósito deve ser positivo.")
+        client.saldo += valor
+        session.commit()
+        session.refresh(client)
+        return {"message": f"Saldo do cliente de email {email} depositado com sucesso. Saldo atual: {client.saldo}"}
+    finally:
+        session.close()
+
+@clientes.put("/update-client/{email}")
+def update_client(nome: str, email:str, telefone: int):
     """
     Essa é a rota para atualizar um cliente da lista de clientes cadastrados no banco de dados.
     """
     SessionLocal = sessionmaker(bind=db)
     session = SessionLocal()
     try:
-        client_db = session.query(Cliente).filter(Cliente.id == client_id).first()
+        client_db = session.query(Cliente).filter(Cliente.email == email).first()
         if not client_db:
             raise HTTPException(status_code=404, detail="Cliente não encontrado.")
-        if client.saldo < 0:
-            raise HTTPException(status_code=400, detail="Saldo não pode ser negativo.")
-        if not client.telefone or len(str(client.telefone)) < 10:
+        if not telefone or len(str(telefone)) < 10:
             raise HTTPException(status_code=400, detail="Telefone inválido.")
-        for key, value in client.model_dump().items():
+
+        for key, value in {"nome": nome, "telefone": telefone}.items():
             setattr(client_db, key, value)
         session.commit()
         session.refresh(client_db)
         score = GetScore(client_db.saldo)
-        return {"message": f"Cliente de id {client_id} atualizado com sucesso.", "client": client_db.nome, "score": score}
+        return {"message": f"Cliente de email {email} atualizado com sucesso.", "client": client_db.nome, "score": score}
+    finally:
+        session.close()
+
+@clientes.get("/get-saldo/{email}")
+def get_saldo(email: str):
+    """
+    Essa é a rota para obter o saldo de um cliente específico pelo email.
+    """
+    SessionLocal = sessionmaker(bind=db)
+    session = SessionLocal()
+    try:
+        clients = session.query(Cliente).filter(Cliente.email == email).first()
+        if not clients:
+            raise HTTPException(status_code=404, detail="Nenhum cliente encontrado.")
+        return {"saldo": clients.saldo}
     finally:
         session.close()
