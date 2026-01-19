@@ -7,24 +7,38 @@ score = APIRouter()
 def GetScore( saldo: float):
     saldo = saldo
     score = (saldo * 0.1)
-    if score < 0:
+    if saldo < 0:
         return 0
-    if score >= 1000000:
-        return 1000
     return score
 
-@score.get("/get-score/{client_id}")
-def get_score(client_id: int):
+@score.get("/get-score-by-email/{email}")
+def get_score(email: str):
     """
-    Essa é a rota para obter o score baseado no saldo fornecido.
+    Essa é a rota para obter o score baseado no email fornecido.
     """
     SessionLocal = sessionmaker(bind=db)
     session = SessionLocal()
     try:
-        client = session.query(Cliente).filter(Cliente.id == client_id).first()
+        client = session.query(Cliente).filter(Cliente.email == email).first()
         if not client:
             raise HTTPException(status_code=404, detail="Cliente não encontrado.")
         score_value = GetScore(client.saldo)
-        return {"client_id": client_id, "score": score_value}
+        return {"email": email, "score": score_value}
     finally:
         session.close()
+
+# @score.get("/get-score-by-id/{email}")
+# def get_score_by_id(email: str):
+#     """
+#     Essa é a rota para obter o score baseado no ID do cliente fornecido.
+#     """
+#     SessionLocal = sessionmaker(bind=db)
+#     session = SessionLocal()
+#     try:
+#         client = session.query(Cliente).filter(Cliente.email == email).first()
+#         if not client:
+#             raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+#         score_value = GetScore(client.saldo)
+#         return {"client_email": email, "score": score_value}
+#     finally:
+#         session.close()
