@@ -21,12 +21,19 @@ O projeto utiliza as seguintes tecnologias:
 - [FastApi]
 - [Pathlib]
 - [sqlalchemy]
+- [requests]
+- [httpx]
+
   
 ## Uso
-Suba a aplicação com o comando:
+Suba as duas aplicações em terminais diferentes com o comando:
 
 ```bash
- python -m uvicorn client_service.app.api.core.config:app --reload
+ python -m uvicorn client_service.app.api.core.config:app --reload --port 8000
+```
+
+```bash
+ python -m uvicorn database_service.app.api.v1.core.config_db:app_db --reload --port 8001
 ```
 
 ## Testes

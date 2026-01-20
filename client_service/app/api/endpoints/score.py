@@ -27,18 +27,3 @@ def get_score(email: str):
     finally:
         session.close()
 
-# @score.get("/get-score-by-id/{email}")
-# def get_score_by_id(email: str):
-#     """
-#     Essa é a rota para obter o score baseado no ID do cliente fornecido.
-#     """
-#     SessionLocal = sessionmaker(bind=db)
-#     session = SessionLocal()
-#     try:
-#         client = session.query(Cliente).filter(Cliente.email == email).first()
-#         if not client:
-#             raise HTTPException(status_code=404, detail="Cliente não encontrado.")
-#         score_value = GetScore(client.saldo)
-#         return {"client_email": email, "score": score_value}
-#     finally:
-#         session.close()
